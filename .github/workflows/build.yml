@@ -59,6 +59,9 @@ jobs:
         name: .net-app
         path: ${{ env.AZURE_WEBAPP_NAME }}
 
+    - name: az cli version
+      run: az --version    
+
     - name: Login via Azure CLI
       uses: azure/login@v1
       with:
