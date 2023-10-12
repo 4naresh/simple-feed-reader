@@ -1,39 +1,48 @@
 name: .NET
 
+env:
+  AZURE_WEBAPP_NAME: simplefeedreadertest   # set this to your application's name
+  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
+  DOTNET_VERSION: '6'   
+
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-env:
-  app-name: "simplefeedreadertest"
-  rg-name: "rg-spoke-staging-sea"
+    branches:
+      - main
+      - release*
+      - feature/*  
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
-    - name: Publish
-      run: dotnet publish SimpleFeedReader/SimpleFeedReader.csproj -c Release -o website
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: website
-        path: SimpleFeedReader/website/**
-        if-no-files-found: error
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set up dependency caching for faster builds
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Build with dotnet
+        run: dotnet build --configuration Release
+
+      - name: dotnet publish
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/${{ env.AZURE_WEBAPP_NAME }}
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v3
+        with:
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/${{ env.AZURE_WEBAPP_NAME }}
 
   deploy_staging:
     needs: build
@@ -47,8 +56,8 @@ jobs:
     - name: Download a Build Artifact
       uses: actions/download-artifact@v3
       with:
-        name: website
-        path: website
+        name: .net-app
+        path: ${{env.DOTNET_ROOT}}/${{ env.AZURE_WEBAPP_NAME }}
 
     - name: Login via Azure CLI
       uses: azure/login@v1
@@ -59,9 +68,9 @@ jobs:
       id: deploywebapp
       uses: azure/webapps-deploy@v2
       with:
-        app-name: ${{ env.app-name }}
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
         slot-name: staging
-        package: website
+        package: .net-app
 
     - name: az cli logout
       run: az logout
