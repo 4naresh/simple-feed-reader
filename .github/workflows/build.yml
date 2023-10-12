@@ -57,7 +57,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: .net-app
-        path: ${{env.DOTNET_ROOT}}/${{ env.AZURE_WEBAPP_NAME }}
+        path: ${{ env.AZURE_WEBAPP_NAME }}
 
     - name: Login via Azure CLI
       uses: azure/login@v1
