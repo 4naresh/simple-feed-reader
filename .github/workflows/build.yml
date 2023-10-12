@@ -73,7 +73,7 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         slot-name: staging
-        package: .net-app
+        package: ${{ env.AZURE_WEBAPP_NAME }}
 
     - name: az cli logout
       run: az logout
